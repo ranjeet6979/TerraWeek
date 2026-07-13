@@ -15,13 +15,129 @@ Yesterday you ran your first `apply`. Today you'll learn the **language** behind
 
 ---
 
+# Terraform Notes: Master HCL Syntax
+
 ## 📝 Tasks
 
 ### Task 1: Master HCL Syntax
+
 Explain (with examples) in your notes:
-- The anatomy of a **block**: `block_type "label_one" "label_two" { argument = value }`.
-- The difference between an **argument** and a **block**.
-- **Expressions**: string interpolation `"${...}"`, references (`resource.name.attr`), and operators.
+* The anatomy of a **block**: `block_type "label_one" "label_two" { argument = value }`.
+* The difference between an **argument** and a **block**.
+* **Expressions**: string interpolation `"${...}"`, references (`resource.name.attr`), and operators.
+
+---
+
+#### The Anatomy of a Block
+
+Blocks are containers for other content and usually represent the configuration of some kind of object, like a resource. Most of Terraform's features are controlled by top-level blocks in a configuration file. 
+
+Blocks have a block type, can have zero or more labels, and have a body that contains any number of arguments and nested blocks.
+
+##### Syntax Template
+
+```hcl
+<BLOCK TYPE> "<BLOCK LABEL>" "<BLOCK LABEL>" {
+  # Block body
+  <IDENTIFIER> = <EXPRESSION> # Argument
+}
+```
+
+##### Real-World Example
+
+```hcl
+resource "aws_vpc" "main" {
+  cidr_block = var.base_cidr_block
+}
+```
+
+* **Block Type (`resource`)**: Identifies the kind of infrastructure object Terraform should manage.
+* **Block Label 1 (`"aws_vpc"`)**: Specifies the resource provider and type.
+* **Block Label 2 (`"main"`)**: The user-defined local name used to reference this specific block elsewhere.
+* **Block Body**: Everything enclosed within the curly braces `{}`.
+* **Identifier/Argument (`cidr_block`)**: A specific configuration parameter accepted by the block.
+* **Expression (`var.base_cidr_block`)**: Represents the value assigned to the identifier.
+
+---
+
+#### The Difference Between an Argument and a Block
+
+The fundamental difference is that an **argument** sets a specific value, while a **block** creates a new structural object or container.
+
+##### Visual Comparison
+
+```hcl
+resource "aws_instance" "web" {
+  # ARGUMENT: Sets a specific setting using the '=' sign
+  instance_type = "t3.micro" 
+
+  # BLOCK: Creates a nested configuration object using curly braces '{ }' without '='
+  root_block_device {
+    volume_size = 30
+    volume_type = "gp3"
+  }
+}
+```
+
+##### Key Differences
+
+* **Arguments**: Assign a value to a name. They appear strictly within blocks and use the equals sign (`=`) for assignment. They can only be defined once per block scope.
+* **Blocks**: Act as structural wrappers. They can be top-level objects or nested inside other blocks to form child objects. Certain blocks can be repeated multiple times (such as multiple `ingress` blocks inside a security group).
+
+---
+
+#### Expressions
+
+Expressions represent a value, either literally or by referencing and combining other values. They appear as values for arguments, or within other expressions.
+
+##### 1. String Interpolation
+String interpolation allows you to insert dynamic expressions directly into literal strings using the `${...}` syntax.
+
+```hcl
+variable "project_name" {
+  default = "ecommerce"
+}
+
+# Result evaluates to "ecommerce-public-bucket"
+resource "aws_s3_bucket" "bucket" {
+  bucket = "\${var.project_name}-public-bucket"
+}
+```
+
+##### 2. References
+References allow you to read attributes from other objects in your Terraform state. You connect objects using dot-notation (`type.name.attribute`).
+
+```hcl
+resource "aws_vpc" "main" {
+  cidr_block = "10.0.0.0/16"
+}
+
+# Accesses the 'id' attribute from the VPC resource block above
+resource "aws_subnet" "subnet" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = "10.0.1.0/24"
+}
+```
+
+##### 3. Operators
+Operators manipulate and evaluate values. They are grouped into arithmetic, comparison, logical, and conditional types.
+
+* **Conditional (Ternary)**: Evaluates a boolean condition. If true, returns the first value; if false, returns the second.
+  ```hcl
+  # If var.is_prod is true, size is 100. Otherwise, it is 20.
+  volume_size = var.is_prod ? 100 : 20
+  ```
+* **Arithmetic**: Performs basic math calculations.
+  ```hcl
+  disk_size = 20 * var.size_multiplier
+  ```
+* **Logical & Comparison**: Combines or tests conditions to return `true` or `false`.
+  ```hcl
+  # Evaluates to true only if both conditions are met
+  enable_monitoring = var.env == "prod" && var.detailed_metrics == true
+  ```
+
+
 
 ### Task 2: Variables, Types & Validation
 Create a `variables.tf` and define variables covering **each major type**:
