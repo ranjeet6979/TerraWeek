@@ -306,6 +306,98 @@ terraform console
 > join("-", ["tws", "terraweek", "2026"])
 ```
 
+### Task 3: Locals, Outputs & Functions
+
+* Use a **`locals`** block to compute a value (e.g. a common `name_prefix` or merged tags).
+* Add **`outputs`** that expose useful values.
+* Use at least **3 built-in functions** — e.g. `upper()`, `merge()`, `join()`, `lookup()`, `length()`, `format()`.
+
+#### Interactive Exploration (`terraform console`)
+
+Before defining blocks, explore function evaluation live in your terminal:
+
+```bash
+terraform console
+> upper("terraweek")
+"TERRAWEEK"
+
+> merge({a=1}, {b=2})
+{
+  "a" = 1
+  "b" = 2
+}
+
+> join("-", ["tws", "terraweek", "2026"])
+"tws-terraweek-2026"
+```
+
+---
+
+#### Code Implementation
+
+##### 1. Local Values Block (`locals.tf`)
+
+```hcl
+locals {
+  # Built-in Function 1: upper() - Normalizes string to uppercase
+  env_upper = upper(var.environment)
+
+  # Built-in Function 2: format() - Constructs a standardized naming prefix
+  name_prefix = format("tws-%s-%s", lower(var.project_name), var.environment)
+
+  # Built-in Function 3: merge() - Combines default tags with dynamic, resource-specific tags
+  common_tags = merge(
+    var.resource_tags,
+    {
+      Environment = local.env_upper
+      ManagedBy   = "Terraform"
+      CreatedAt   = "2026-07-13" # Current tracking timestamp
+    }
+  )
+
+  # Built-in Function 4: length() - Evaluates sizing for metric collection dynamically
+  az_count = length(var.availability_zones)
+}
+```
+
+##### 2. Outputs Block (`outputs.tf`)
+
+```hcl
+output "resource_prefix" {
+  description = "The computed naming prefix applied to infrastructure components"
+  value       = local.name_prefix
+}
+
+output "global_tags" {
+  description = "The fully aggregated map of resource tags"
+  value       = local.common_tags
+}
+
+output "deployment_summary" {
+  description = "A formatted text snippet detailing target deployment sizing"
+  # Built-in Function 5: join() - Flattens an array into a clean layout string
+  value       = "Deploying to \${local.env_upper} across \({local.az_count} zones:\){join(", ", var.availability_zones)}"
+}
+
+output "secure_db_endpoint" {
+  description = "The database connections context string"
+  value       = "Database running on port \${var.database_config.port}"
+}
+```
+
+---
+
+#### Key Architecture Concepts
+
+##### Why use Locals?
+Local values function like temporary constants within an application. They allow you to centralize messy expression duplication or complex formatting into a single managed string. This ensures your resource blocks remain readable.
+
+##### What makes Outputs essential?
+Outputs serve two major structural tasks:
+1. **CLI Visibility:** Exposing critical resource IDs, endpoints, or properties to human engineers directly inside the command line tool pipeline.
+2. **State Sharing:** Passing calculated platform secrets or networking maps downstream into entirely separate configurations utilizing `terraform_remote_state` data lookups.
+
+
 ### Task 4: Build Something Real (Docker provider — no cloud cost)
 Use the **starter code in [`./example`](./example)**. It uses the **`kreuzwerker/docker`** provider to pull an Nginx image and run a container — fully driven by variables.
 
