@@ -306,11 +306,7 @@ terraform console
 > join("-", ["tws", "terraweek", "2026"])
 ```
 
-### Task 3: Locals, Outputs & Functions
 
-* Use a **`locals`** block to compute a value (e.g. a common `name_prefix` or merged tags).
-* Add **`outputs`** that expose useful values.
-* Use at least **3 built-in functions** — e.g. `upper()`, `merge()`, `join()`, `lookup()`, `length()`, `format()`.
 
 #### Interactive Exploration (`terraform console`)
 
@@ -397,6 +393,7 @@ Outputs serve two major structural tasks:
 1. **CLI Visibility:** Exposing critical resource IDs, endpoints, or properties to human engineers directly inside the command line tool pipeline.
 2. **State Sharing:** Passing calculated platform secrets or networking maps downstream into entirely separate configurations utilizing `terraform_remote_state` data lookups.
 
+---
 
 ### Task 4: Build Something Real (Docker provider — no cloud cost)
 Use the **starter code in [`./example`](./example)**. It uses the **`kreuzwerker/docker`** provider to pull an Nginx image and run a container — fully driven by variables.
@@ -406,14 +403,32 @@ Use the **starter code in [`./example`](./example)**. It uses the **`kreuzwerker
 ```bash
 cd example
 terraform init
-terraform plan  -var 'container_name=tws-web' -var 'external_port=8080'
-terraform apply -var 'container_name=tws-web' -var 'external_port=8080'
+terraform plan  -var 'container_name=tws-web' -var 'external_port=8082'
+terraform apply -var 'container_name=tws-web' -var 'external_port=8082'
 # visit http://localhost:8080
 terraform output
-terraform destroy -var 'container_name=tws-web' -var 'external_port=8080'
+terraform destroy -var 'container_name=tws-web' -var 'external_port=8082'
 ```
+<br><img width="981" height="825" alt="image" src="https://github.com/user-attachments/assets/af7b4edc-e10a-4c13-8381-39e5ad60635e" />
+<br><img width="1054" height="534" alt="image" src="https://github.com/user-attachments/assets/71755bed-728a-4c69-adf5-dd6901029112" />
+<br><img width="983" height="683" alt="image" src="https://github.com/user-attachments/assets/bbc5e06c-1ae0-44ec-b687-7316f08c0348" />
+<br><img width="840" height="751" alt="image" src="https://github.com/user-attachments/assets/1ca6792b-50f0-4566-8fd5-4bd4a5a3fb33" />
+<br><img width="1032" height="322" alt="image" src="https://github.com/user-attachments/assets/7021996d-c2cf-47a4-b1b9-bb578e6887ea" />
+<br>terraform output
+<br><img width="462" height="66" alt="image" src="https://github.com/user-attachments/assets/78d82637-2614-427e-91f8-3be4bbec4b4a" />
+<br>terraform destroy -var 'container_name=tws-web' -var 'external_port=8082'
+<br><img width="979" height="827" alt="image" src="https://github.com/user-attachments/assets/acc6b4bd-1bf0-4e1a-b96b-1869600d6985" />
 
-Then try the same run using a **`terraform.tfvars`** file instead of `-var` flags and note the difference.
+  <br>Then try the same run using a **`terraform.tfvars`** file instead of `-var` flags and note the difference.
+<br>terrform plan
+<br><img width="979" height="658" alt="image" src="https://github.com/user-attachments/assets/e72b4ff4-90fc-4c69-9461-0d5a54fcc437" />
+<br><img width="1050" height="764" alt="image" src="https://github.com/user-attachments/assets/4d6a0a31-a9ad-4457-9f5b-9d95e317c6b6" />
+<br>terraform apply
+<br><img width="981" height="667" alt="image" src="https://github.com/user-attachments/assets/2c4ba311-68d1-49f5-948f-cc5257ed6fcc" />
+<br><img width="389" height="792" alt="image" src="https://github.com/user-attachments/assets/7d8ad6ba-4990-429b-afd1-254bb1e3dfe5" />
+<br><img width="998" height="218" alt="image" src="https://github.com/user-attachments/assets/d1f92088-fa6f-47d5-a795-f3356b5510e9" />
+<br><img width="998" height="218" alt="image" src="https://github.com/user-attachments/assets/7d46aec2-3325-4639-834b-847905560e69" />
+
 
 ---
 
@@ -421,6 +436,51 @@ Then try the same run using a **`terraform.tfvars`** file instead of `-var` flag
 ```
 -var / -var-file  ▶  *.auto.tfvars  ▶  terraform.tfvars  ▶  TF_VAR_ env vars  ▶  default
 ```
+### Task 4: Variable Precedence & Overrides
+
+Understand the hierarchy of evaluation when a single input variable is assigned across multiple configuration points.
+
+#### 📊 Variable Precedence (highest wins)
+
+```text
+-var / -var-file  ▶  *.auto.tfvars  ▶  terraform.tfvars  ▶  TF_VAR_ env vars  ▶  default
+```
+
+---
+
+#### The Experiment: Command Flags vs. `.tfvars`
+
+To test how variable values are collected and overwritten, execute consecutive deployment plans using the input variable `environment`.
+
+##### Step 1: Run with Command Line Flags
+Run a plan passing an explicit setting directly into the terminal window via the CLI flag:
+
+```bash
+terraform plan -var="environment=production-cli"
+```
+
+* **Observed CLI Behavior**: Terraform overrides your code block's `default = "dev"` parameter and applies `production-cli` to all local dependencies.
+
+##### Step 2: Run with a `terraform.tfvars` File
+Create a file named exactly `terraform.tfvars` inside your root project directory:
+
+```hcl
+# terraform.tfvars
+environment = "staging-tfvars"
+```
+
+To run the same plan using your file configuration instead of the CLI flag, execute this command:
+
+```bash
+terraform plan
+```
+
+* **Observed CLI Behavior**: You no longer need to pass flags to the command line. Terraform automatically parses the file named `terraform.tfvars` at runtime, evaluates its keys, and resolves the value of `environment` to `staging-tfvars`.
+
+##### The Difference
+* **Automation**: The `-var` flag requires you to manually type or script inputs into every execution command. The `terraform.tfvars` file is discovered automatically by Terraform without any extra flags.
+* **Precedence Collision**: If you run both together (`terraform plan -var="environment=production-cli"` while the file exists), the `-var` flag wins. Command-line flags hold a higher priority and override file declarations.
+
 
 ---
 
