@@ -162,20 +162,41 @@ variable "environment" {
   }
 }
 ```
-# ==============================================================================
-# PRIMITIVE TYPES
-# ==============================================================================
+### Task 2: Variables, Types & Validation
 
+Create a `variables.tf` and define variables covering **each major type**:
+* Primitives: `string`, `number`, `bool`
+* Collections: `list(string)`, `map(string)`, `set(string)`
+* Structural: `object({...})`, `tuple([...])`
+
+Add at least one variable with:
+* a **`default`**,
+* a **`validation`** block (e.g. only allow certain values),
+* the **`sensitive = true`** flag.
+
+```hcl
 variable "environment" {
-  description = "The deployment environment target"
+  description = "Deployment environment"
   type        = string
   default     = "dev"
 
   validation {
     condition     = contains(["dev", "staging", "prod"], var.environment)
-    error_message = "The environment variable must be one of: dev, staging, prod."
+    error_message = "environment must be one of: dev, staging, prod."
   }
 }
+```
+
+---
+
+#### Complete Code Implementation (`variables.tf`)
+
+```hcl
+# ==============================================================================
+# PRIMITIVE TYPES
+# ==============================================================================
+
+# Note: The "environment" variable with validation is defined above.
 
 variable "instance_count" {
   description = "Number of EC2 instances to provision"
@@ -214,7 +235,7 @@ variable "resource_tags" {
 }
 
 variable "unique_dns_servers" {
-  description = "A set of unique IP addresses for custom DNS. Duplicate entries will be automatically discarded."
+  description = "A set of unique IP addresses for custom DNS"
   type        = set(string)
   default     = ["8.8.8.8", "8.8.4.4"]
 }
@@ -226,23 +247,23 @@ variable "unique_dns_servers" {
 variable "database_config" {
   description = "A strict schema object grouping related configuration parameters"
   type = object({
-    engine         = string
-    port           = number
-    allocated_gb   = number
+    engine           = string
+    port             = number
+    allocated_gb     = number
     backup_retention = number
   })
   default = {
-    engine         = "postgres"
-    port           = 5432
-    allocated_gb   = 20
+    engine           = "postgres"
+    port             = 5432
+    allocated_gb     = 20
     backup_retention = 7
   }
 }
 
 variable "network_subnets" {
-  description = "A fixed-length sequence of different types (tuple) representing tier size and visibility"
+  description = "A fixed-length sequence of different types (tuple) representing tier properties"
   type        = tuple([string, number, bool])
-  default     = ["10.0.1.0/24", 80, true] # [CIDR block, Max Connections, Publicly Accessible]
+  default     = ["10.0.1.0/24", 80, true]
 }
 
 # ==============================================================================
@@ -253,13 +274,24 @@ variable "db_password" {
   description = "The master password for the application database"
   type        = string
   default     = "SuperSecurePassword123!"
-  sensitive   = true # Prevents the value from displaying in plain text in CLI logs
+  sensitive   = true
 
   validation {
     condition     = length(var.db_password) >= 12
     error_message = "The database password must be at least 12 characters long."
   }
 }
+```
+
+#### Key Architecture Concepts
+
+##### Collections vs. Structural Types
+* **Collections** (`list`, `map`, `set`) require every internal element to be the exact same data type.
+* **Structural Types** (`object`, `tuple`) allow you to mix and match multiple disparate data types into a single complex schema.
+
+##### The Sensitive Flag Limitation
+Setting `sensitive = true` prevents values from being printed directly into the shell stdout during `terraform plan` or `terraform apply`. However, this data is still saved as **unencrypted plain text inside your `.tfstate` file**. You must always protect state backends using remote access controls and encryption at rest.
+
 
 
 ### Task 3: Locals, Outputs & Functions
