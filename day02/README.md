@@ -162,6 +162,105 @@ variable "environment" {
   }
 }
 ```
+# ==============================================================================
+# PRIMITIVE TYPES
+# ==============================================================================
+
+variable "environment" {
+  description = "The deployment environment target"
+  type        = string
+  default     = "dev"
+
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "The environment variable must be one of: dev, staging, prod."
+  }
+}
+
+variable "instance_count" {
+  description = "Number of EC2 instances to provision"
+  type        = number
+  default     = 2
+
+  validation {
+    condition     = var.instance_count > 0 && var.instance_count <= 10
+    error_message = "The instance count must be between 1 and 10."
+  }
+}
+
+variable "enable_termination_protection" {
+  description = "If true, enables delete protection on critical resources"
+  type        = bool
+  default     = false
+}
+
+# ==============================================================================
+# COLLECTION TYPES
+# ==============================================================================
+
+variable "availability_zones" {
+  description = "An ordered list of target availability zones"
+  type        = list(string)
+  default     = ["us-east-1a", "us-east-1b", "us-east-1c"]
+}
+
+variable "resource_tags" {
+  description = "A map of default key-value pairs to apply to resources"
+  type        = map(string)
+  default = {
+    Project   = "eCommerce"
+    ManagedBy = "Terraform"
+  }
+}
+
+variable "unique_dns_servers" {
+  description = "A set of unique IP addresses for custom DNS. Duplicate entries will be automatically discarded."
+  type        = set(string)
+  default     = ["8.8.8.8", "8.8.4.4"]
+}
+
+# ==============================================================================
+# STRUCTURAL TYPES
+# ==============================================================================
+
+variable "database_config" {
+  description = "A strict schema object grouping related configuration parameters"
+  type = object({
+    engine         = string
+    port           = number
+    allocated_gb   = number
+    backup_retention = number
+  })
+  default = {
+    engine         = "postgres"
+    port           = 5432
+    allocated_gb   = 20
+    backup_retention = 7
+  }
+}
+
+variable "network_subnets" {
+  description = "A fixed-length sequence of different types (tuple) representing tier size and visibility"
+  type        = tuple([string, number, bool])
+  default     = ["10.0.1.0/24", 80, true] # [CIDR block, Max Connections, Publicly Accessible]
+}
+
+# ==============================================================================
+# SENSITIVE VARIABLE WITH VALIDATION & DEFAULT
+# ==============================================================================
+
+variable "db_password" {
+  description = "The master password for the application database"
+  type        = string
+  default     = "SuperSecurePassword123!"
+  sensitive   = true # Prevents the value from displaying in plain text in CLI logs
+
+  validation {
+    condition     = length(var.db_password) >= 12
+    error_message = "The database password must be at least 12 characters long."
+  }
+}
+
 
 ### Task 3: Locals, Outputs & Functions
 - Use a **`locals`** block to compute a value (e.g. a common `name_prefix` or merged tags).
