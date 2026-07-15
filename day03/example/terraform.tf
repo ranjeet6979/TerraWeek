@@ -20,3 +20,17 @@ provider "aws" {
     }
   }
 }
+
+provider "aws" {
+  alias  = "us_east2"
+  region = "us-east-2"  # Hardcoded or map to a variable like var.aws_backup_region
+
+  default_tags {
+    tags = {
+      Project   = "terraweek-2026"
+      ManagedBy = "terraform"
+      Day       = "03"
+      Environment = "Disaster-Recovery" # Customized tag for the alias region
+    }
+  }
+}
