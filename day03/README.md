@@ -54,13 +54,60 @@ Internet ──▶ [IGW] ──▶ [Route Table] ──▶ [ Public Subnet ] ─
 
 ### Task 1: Providers & Version Pinning
 - Add a `terraform` block with `required_version` and `required_providers` (pin with `~>`).
+<br>![Terraform Block](example/terraform_block.png)
+
 - Explain **why version pinning matters** and what the `~>` (pessimistic) operator does.
+<br>Version pinning locks your software to specific dependency versions.
+<br>It Locks software to specific dependency versions. It ensures build stability, repeatability, and security across different environments (local development vs. production) by preventing unexpected upstream updates.
+<br>~> operator locks upto specific minor releases without upgrading to version higher than that. 
+<br>1. Three-Digit Specification (Patch Lock)
+* **Format:** `~> X.Y.Z` (e.g., `~> 2.1.0`)
+* **Behavior:** Locks the major and minor versions. Only the patch version varies.
+* **Range:** `>= 2.1.0` and `< 2.2.0`
+* **Examples:** Installs `2.1.1` or `2.1.9`, but blocks `2.2.0`.
+<br>Two-Digit Specification (Minor Lock)
+* **Format:** `~> X.Y` (e.g., `~> 2.1`)
+* **Behavior:** Locks the major version. The minor and patch versions vary.
+* **Range:** `>= 2.1` and `< 3.0`
+* **Examples:** Installs `2.2.0` or `2.5.1`, but blocks `3.0.0`.
+
 - **Bonus:** configure a second provider **alias** (e.g. a second AWS region) and explain when you'd use it.
+<br>![Second Provider](example/TerraformProvider2.png)
 
 ### Task 2: Resources vs Data Sources
 - Create at least one **resource** (something new).
 - Use at least one **`data`** source to *read* existing info (e.g. `aws_ami`, `aws_availability_zones`, or your default VPC).
 - Explain the difference: **resources create/manage**, **data sources only read**.
+
+<br>Terraform: Resources vs. Data Sources
+
+1. Resources (`resource`)
+* **Purpose**: **Write & Manage**. Used to create, update, and delete infrastructure.
+* **State**: Tracked in `terraform.tfstate`. Terraform controls its entire lifecycle.
+* **Example**: Creating a brand new AWS S3 bucket or EC2 instance.
+
+2. Data Sources (`data`)
+* **Purpose**: **Read-Only**. Used to fetch information from existing infrastructure outside the current configuration.
+* **State**: Not managed by Terraform. Safe to run as it makes zero infrastructure changes.
+* **Example**: Querying AWS to get the latest Ubuntu AMI ID or looking up an existing VPC ID.
+
+Code Syntax Example
+
+```hcl
+# READ: Fetches existing VPC information by its tag
+data "aws_vpc" "existing_vpc" {
+  filter {
+    name   = "tag:Name"
+    values = ["production-vpc"]
+  }
+}
+
+# WRITE: Creates a new subnet inside that existing VPC
+resource "aws_subnet" "new_subnet" {
+  vpc_id     = data.aws_vpc.existing_vpc.id # Reference data source output
+  cidr_block = "10.0.1.0/24"
+}
+```
 
 ### Task 3: Provision a Cloud Stack
 Use the **AWS starter code in [`./example`](./example)** (or adapt to Azure/GCP). It builds a minimal, free-tier-friendly stack:
@@ -68,13 +115,299 @@ Use the **AWS starter code in [`./example`](./example)** (or adapt to Azure/GCP)
 - a **security group**
 - an **EC2 instance** using a **data source** to find the latest Amazon Linux 2023 AMI
 
-```bash
+
 cd example
 terraform init
+```text
+Initializing the backend...
+
+Initializing provider plugins...
+- Finding hashicorp/aws versions matching "~> 6.0"...
+- Installing hashicorp/aws v6.55.0...
+- Installed hashicorp/aws v6.55.0 (signed by HashiCorp)
+
+Terraform has created a lock file .terraform.lock.hcl to record the provider
+selections it made above. Include this file in your version control repository
+so that Terraform can guarantee to make the same selections by default when
+you run "terraform init" in the future.
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+```
 terraform validate
+```text
+Success! The configuration is valid.
+```
 terraform plan
+```text
+data.aws_ami.al2023: Reading...
+data.aws_availability_zones.available: Reading...
+aws_vpc.main: Refreshing state... [id=vpc-0c80ece1b08345982]
+data.aws_availability_zones.available: Read complete after 1s [id=us-east-1]
+data.aws_ami.al2023: Read complete after 2s [id=ami-0fd6240f599091088]
+aws_internet_gateway.igw: Refreshing state... [id=igw-02f71846055c2bf30]
+aws_subnet.public: Refreshing state... [id=subnet-03d46d50fcbf3a512]
+aws_security_group.web: Refreshing state... [id=sg-07bd746ffcc9a7a4c]
+aws_route_table.public: Refreshing state... [id=rtb-034fff886fa0f35db]
+aws_route_table_association.public: Refreshing state... [id=rtbassoc-0f262d2ca18bfaede]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # aws_instance.web will be created
+  + resource "aws_instance" "web" {
+      + ami                                  = "ami-0fd6240f599091088"
+      + arn                                  = (known after apply)
+      + associate_public_ip_address          = (known after apply)
+      + availability_zone                    = (known after apply)
+      + disable_api_stop                     = (known after apply)
+      + disable_api_termination              = (known after apply)
+      + ebs_optimized                        = (known after apply)
+      + enable_primary_ipv6                  = (known after apply)
+      + force_destroy                        = false
+      + get_password_data                    = false
+      + host_id                              = (known after apply)
+      + host_resource_group_arn              = (known after apply)
+      + iam_instance_profile                 = (known after apply)
+      + id                                   = (known after apply)
+      + instance_initiated_shutdown_behavior = (known after apply)
+      + instance_lifecycle                   = (known after apply)
+      + instance_state                       = (known after apply)
+      + instance_type                        = "t3.micro"
+      + ipv6_address_count                   = (known after apply)
+      + ipv6_addresses                       = (known after apply)
+      + key_name                             = (known after apply)
+      + monitoring                           = (known after apply)
+      + outpost_arn                          = (known after apply)
+      + password_data                        = (known after apply)
+      + placement_group                      = (known after apply)
+      + placement_group_id                   = (known after apply)
+      + placement_partition_number           = (known after apply)
+      + primary_network_interface_id         = (known after apply)
+      + private_dns                          = (known after apply)
+      + private_ip                           = (known after apply)
+      + public_dns                           = (known after apply)
+      + public_ip                            = (known after apply)
+      + region                               = "us-east-1"
+      + secondary_private_ips                = (known after apply)
+      + security_groups                      = (known after apply)
+      + source_dest_check                    = true
+      + spot_instance_request_id             = (known after apply)
+      + subnet_id                            = "subnet-03d46d50fcbf3a512"
+      + tags                                 = {
+          + "Name" = "terraweek-web"
+        }
+      + tags_all                             = {
+          + "Day"       = "03"
+          + "ManagedBy" = "terraform"
+          + "Name"      = "terraweek-web"
+          + "Project"   = "terraweek-2026"
+        }
+      + tenancy                              = (known after apply)
+      + user_data                            = <<-EOT
+            #!/bin/bash
+            dnf install -y nginx
+            echo "<h1>Hello from TerraWeek 2026 🚀</h1>" > /usr/share/nginx/html/index.html
+            systemctl enable --now nginx
+        EOT
+      + user_data_base64                     = (known after apply)
+      + user_data_replace_on_change          = false
+      + vpc_security_group_ids               = [
+          + "sg-07bd746ffcc9a7a4c",
+        ]
+
+      + capacity_reservation_specification (known after apply)
+
+      + cpu_options (known after apply)
+
+      + ebs_block_device (known after apply)
+
+      + enclave_options (known after apply)
+
+      + ephemeral_block_device (known after apply)
+
+      + instance_market_options (known after apply)
+
+      + maintenance_options (known after apply)
+
+      + metadata_options (known after apply)
+
+      + network_interface (known after apply)
+
+      + primary_network_interface (known after apply)
+
+      + private_dns_name_options (known after apply)
+
+      + root_block_device (known after apply)
+
+      + secondary_network_interface (known after apply)
+    }
+
+Plan: 1 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + instance_id = (known after apply)
+  + public_ip   = (known after apply)
+  + web_url     = (known after apply)
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Note: You didn't use the -out option to save this plan, so Terraform can't guarantee to take exactly these actions if you run "terraform apply" now.
+```
 terraform apply      # type: yes
+```text
+ata.aws_availability_zones.available: Reading...
+data.aws_ami.al2023: Reading...
+aws_vpc.main: Refreshing state... [id=vpc-0c80ece1b08345982]
+data.aws_availability_zones.available: Read complete after 1s [id=us-east-1]
+data.aws_ami.al2023: Read complete after 2s [id=ami-0fd6240f599091088]
+aws_internet_gateway.igw: Refreshing state... [id=igw-02f71846055c2bf30]
+aws_subnet.public: Refreshing state... [id=subnet-03d46d50fcbf3a512]
+aws_security_group.web: Refreshing state... [id=sg-07bd746ffcc9a7a4c]
+aws_route_table.public: Refreshing state... [id=rtb-034fff886fa0f35db]
+aws_route_table_association.public: Refreshing state... [id=rtbassoc-0f262d2ca18bfaede]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # aws_instance.web will be created
+  + resource "aws_instance" "web" {
+      + ami                                  = "ami-0fd6240f599091088"
+      + arn                                  = (known after apply)
+      + associate_public_ip_address          = (known after apply)
+      + availability_zone                    = (known after apply)
+      + disable_api_stop                     = (known after apply)
+      + disable_api_termination              = (known after apply)
+      + ebs_optimized                        = (known after apply)
+      + enable_primary_ipv6                  = (known after apply)
+      + force_destroy                        = false
+      + get_password_data                    = false
+      + host_id                              = (known after apply)
+      + host_resource_group_arn              = (known after apply)
+      + iam_instance_profile                 = (known after apply)
+      + id                                   = (known after apply)
+      + instance_initiated_shutdown_behavior = (known after apply)
+      + instance_lifecycle                   = (known after apply)
+      + instance_state                       = (known after apply)
+      + instance_type                        = "t3.micro"
+      + ipv6_address_count                   = (known after apply)
+      + ipv6_addresses                       = (known after apply)
+      + key_name                             = (known after apply)
+      + monitoring                           = (known after apply)
+      + outpost_arn                          = (known after apply)
+      + password_data                        = (known after apply)
+      + placement_group                      = (known after apply)
+      + placement_group_id                   = (known after apply)
+      + placement_partition_number           = (known after apply)
+      + primary_network_interface_id         = (known after apply)
+      + private_dns                          = (known after apply)
+      + private_ip                           = (known after apply)
+      + public_dns                           = (known after apply)
+      + public_ip                            = (known after apply)
+      + region                               = "us-east-1"
+      + secondary_private_ips                = (known after apply)
+      + security_groups                      = (known after apply)
+      + source_dest_check                    = true
+      + spot_instance_request_id             = (known after apply)
+      + subnet_id                            = "subnet-03d46d50fcbf3a512"
+      + tags                                 = {
+          + "Name" = "terraweek-web"
+        }
+      + tags_all                             = {
+          + "Day"       = "03"
+          + "ManagedBy" = "terraform"
+          + "Name"      = "terraweek-web"
+          + "Project"   = "terraweek-2026"
+        }
+      + tenancy                              = (known after apply)
+      + user_data                            = <<-EOT
+            #!/bin/bash
+            dnf install -y nginx
+            echo "<h1>Hello from TerraWeek 2026 🚀</h1>" > /usr/share/nginx/html/index.html
+            systemctl enable --now nginx
+        EOT
+      + user_data_base64                     = (known after apply)
+      + user_data_replace_on_change          = false
+      + vpc_security_group_ids               = [
+          + "sg-07bd746ffcc9a7a4c",
+        ]
+
+      + capacity_reservation_specification (known after apply)
+
+      + cpu_options (known after apply)
+
+      + ebs_block_device (known after apply)
+
+      + enclave_options (known after apply)
+
+      + ephemeral_block_device (known after apply)
+
+      + instance_market_options (known after apply)
+
+      + maintenance_options (known after apply)
+
+      + metadata_options (known after apply)
+
+      + network_interface (known after apply)
+
+      + primary_network_interface (known after apply)
+
+      + private_dns_name_options (known after apply)
+
+      + root_block_device (known after apply)
+
+      + secondary_network_interface (known after apply)
+    }
+
+Plan: 1 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + instance_id = (known after apply)
+  + public_ip   = (known after apply)
+  + web_url     = (known after apply)
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+aws_instance.web: Creating...
+aws_instance.web: Still creating... [00m10s elapsed]
+aws_instance.web: Creation complete after 17s [id=i-0c1f5f0f48bf02d44]
+
+Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+ami_id = "ami-0fd6240f599091088"
+instance_id = "i-0c1f5f0f48bf02d44"
+public_ip = "98.86.174.213"
+web_url = "http://98.86.174.213"
+```
 terraform state list # see everything Terraform now manages
+```text
+ranjeetbhosale@Ranjeets-MacBook-Air example % terraform state list
+data.aws_ami.al2023
+data.aws_availability_zones.available
+aws_instance.web
+aws_internet_gateway.igw
+aws_route_table.public
+aws_route_table_association.public
+aws_security_group.web
+aws_subnet.public
+aws_vpc.main
 ```
 
 ### Task 4: Meta-Arguments in Action
@@ -82,7 +415,7 @@ Extend the config to practice each of these:
 - **`count`** — create N identical resources (e.g. N EC2 instances).
 - **`for_each`** — create resources from a `map`/`set` (preferred over `count` for named things).
 - **`depends_on`** — force an explicit ordering.
-- **`lifecycle`** — try `create_before_destroy`, `prevent_destroy`, and `ignore_changes`.
+- **`lifecycle`** — try `create_before_destroy`, `prevent_destroy`, and `ignore_changes`
 
 ```hcl
 lifecycle {
