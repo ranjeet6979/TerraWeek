@@ -1,16 +1,16 @@
-output "instance_id" {
-  description = "ID of the EC2 instance."
-  value       = aws_instance.web.id
+output "instance_ids" {
+  description = "IDs of all EC2 instances."
+  value       = aws_instance.web[*].id
 }
 
-output "public_ip" {
-  description = "Public IP of the web server."
-  value       = aws_instance.web.public_ip
+output "public_ips" {
+  description = "Public IPs of the web servers."
+  value       = aws_instance.web[*].public_ip
 }
 
-output "web_url" {
-  description = "Open this in your browser once the instance boots."
-  value       = "http://${aws_instance.web.public_ip}"
+output "web_urls" {
+  description = "URLs to access the web servers."
+  value       = [for ip in aws_instance.web[*].public_ip : "http://${ip}"]
 }
 
 output "ami_id" {
