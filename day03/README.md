@@ -415,6 +415,7 @@ Extend the config to practice each of these:
 - **`count`** — create N identical resources (e.g. N EC2 instances).
 <br>Added code to count = 2 as below with changes in outputs.tf and main.tf(Name = "${var.name_prefix}-web-${count.index + 1}")
 <br>
+
 ```diff
 diff --git a/day03/example/main.tf b/day03/example/main.tf
 index 6cf9b44..0e698ba 100644
@@ -469,6 +470,7 @@ index c25bf60..ddd5b32 100644
 +  value       = [for ip in aws_instance.web[*].public_ip : "http://${ip}"]
  }
 ```
+
 - **`for_each`** — create resources from a `map`/`set` (preferred over `count` for named things).
 - **`depends_on`** — force an explicit ordering.
 - **`lifecycle`** — try `create_before_destroy`, `prevent_destroy`, and `ignore_changes`
