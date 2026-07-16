@@ -413,6 +413,60 @@ aws_vpc.main
 ### Task 4: Meta-Arguments in Action
 Extend the config to practice each of these:
 - **`count`** — create N identical resources (e.g. N EC2 instances).
+```diff
+diff --git a/day03/example/main.tf b/day03/example/main.tf
+index 6cf9b44..0e698ba 100644
+--- a/day03/example/main.tf
++++ b/day03/example/main.tf
+@@ -105,10 +105,10 @@ resource "aws_security_group" "web" {
+ 
+ resource "aws_instance" "web" {
+   ami                    = data.aws_ami.al2023.id
+-  count                  = 2
+   instance_type          = var.instance_type
+   subnet_id              = aws_subnet.public.id
+   vpc_security_group_ids = [aws_security_group.web.id]
++  associate_public_ip_address = true
+ 
+   user_data = <<-EOF
+     #!/bin/bash
+@@ -122,6 +122,6 @@ resource "aws_instance" "web" {
+   }
+ 
+   tags = {
+-    Name = "${var.name_prefix}-web"
++    Name = "${var.name_prefix}-web-${count.index + 1}"
+   }
+ }
+diff --git a/day03/example/outputs.tf b/day03/example/outputs.tf
+index c25bf60..ddd5b32 100644
+--- a/day03/example/outputs.tf
++++ b/day03/example/outputs.tf
+@@ -1,16 +1,16 @@
+-output "instance_id" {
+-  description = "ID of the EC2 instance."
+-  value       = aws_instance.web.id
++output "instance_ids" {
++  description = "IDs of all EC2 instances."
++  value       = aws_instance.web[*].id
+ }
+ 
+-output "public_ip" {
+-  description = "Public IP of the web server."
+-  value       = aws_instance.web.public_ip
++output "public_ips" {
++  description = "Public IPs of the web servers."
++  value       = aws_instance.web[*].public_ip
+ }
+ 
+-output "web_url" {
+-  description = "Open this in your browser once the instance boots."
+-  value       = "http://${aws_instance.web.public_ip}"
++output "web_urls" {
++  description = "URLs to access the web servers."
++  value       = [for ip in aws_instance.web[*].public_ip : "http://${ip}"]
+ }
+```
 - **`for_each`** — create resources from a `map`/`set` (preferred over `count` for named things).
 - **`depends_on`** — force an explicit ordering.
 - **`lifecycle`** — try `create_before_destroy`, `prevent_destroy`, and `ignore_changes`
