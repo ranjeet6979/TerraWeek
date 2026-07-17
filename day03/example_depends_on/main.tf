@@ -1,18 +1,32 @@
 # --- Data sources: read existing info, don't create anything ---
 
 # Latest Amazon Linux 2023 AMI in the chosen region.
-data "aws_ami" "al2023" {
+# data "aws_ami" "al2023" {
+#   most_recent = true
+#   owners      = ["amazon"]
+
+#   filter {
+#     name   = "name"
+#     values = ["al2023-ami-2023.*-x86_64"]
+#   }
+
+#   filter {
+#     name   = "architecture"
+#     values = ["x86_64"]
+#   }
+# }
+data "aws_ami" "ubuntu" {
   most_recent = true
-  owners      = ["amazon"]
+  owners      = ["099720109477"] # Canonical's official AWS Account ID
 
   filter {
     name   = "name"
-    values = ["al2023-ami-2023.*-x86_64"]
+    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
   }
 
   filter {
-    name   = "architecture"
-    values = ["x86_64"]
+    name   = "virtualization-type"
+    values = ["hvm"]
   }
 }
 
@@ -56,7 +70,7 @@ resource "aws_security_group" "web" {
 
 resource "aws_instance" "web" {
 
-  ami                    = data.aws_ami.al2023.id
+  ami                    = data.aws_ami.ubuntu.id
   instance_type          = var.instance_type
   availability_zone      = data.aws_availability_zones.available.names[0]
   associate_public_ip_address = true
@@ -76,6 +90,6 @@ resource "aws_instance" "web" {
   depends_on = [aws_security_group.web]
 
   tags = {
-    Name = "${var.name_prefix}"
+    Name = "${var.name_prefix}-tag-changes"
   }
 }

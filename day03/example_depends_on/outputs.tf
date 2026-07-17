@@ -20,5 +20,5 @@ output "web_urls" {
 
 output "ami_id" {
   description = "The Amazon Linux 2023 AMI resolved via the data source."
-  value       = data.aws_ami.al2023.id
+  value       = data.aws_ami.ubuntu.id
 }

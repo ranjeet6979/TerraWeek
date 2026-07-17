@@ -489,12 +489,15 @@ index c25bf60..ddd5b32 100644
 
 **prevent_destroy**
 <br>Terraform apply output for prevent destroy
+
 ![Terraform apply output for prevent destroy](/day03/example_lifecycle/prevent_destroy_terraform_apply.png)
 
 <br>File not be deleted even if marked for destroy in terraform apply
+
 ![Terraform apply](prevent_destroy_terraform_apply_marked_for_destroypng.png)
 
 <br>File not be deleted during terraform destroy
+
 ![Terraform destroy will give an error](/day03/example_lifecycle/prevent_destroy_terraform_destroy.png)
 
 ```hcl
@@ -505,10 +508,639 @@ lifecycle {
 ```
 
 ### Task 5: Update & Destroy
-- Change a `tag` or the `instance_type`, run `terraform plan`, and read the diff — notice what forces **replace** vs **in-place update**.
+- Change a `tag` or the `instance_type`, run `terraform plan`, and read the diff — notice what forces 
+<br>Terraform plan output after tag change, it is in-place update change where Terraform calls CreateTags and existing resource will not be deleted.
+
+```diff
+ranjeetbhosale@Ranjeets-MacBook-Air example_depends_on % terraform plan
+data.aws_availability_zones.available: Reading...
+data.aws_ami.al2023: Reading...
+aws_security_group.web: Refreshing state... [id=sg-012db8010c4b40411]
+data.aws_availability_zones.available: Read complete after 1s [id=us-east-1]
+data.aws_ami.al2023: Read complete after 2s [id=ami-0fd6240f599091088]
+aws_instance.web: Refreshing state... [id=i-04876adad823e0070]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the
+following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # aws_instance.web will be updated in-place
+  ~ resource "aws_instance" "web" {
+        id                                   = "i-04876adad823e0070"
+      ~ tags                                 = {
+          ~ "Name" = "terraweek" -> "terraweek-tag-changes"
+        }
+      ~ tags_all                             = {
+          ~ "Name"      = "terraweek" -> "terraweek-tag-changes"
+            # (3 unchanged elements hidden)
+        }
+        # (40 unchanged attributes hidden)
+
+        # (9 unchanged blocks hidden)
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+```
+<br>screenshot of tag changes, instance will not be deleted.
+
+![Instance with new tags, not deleted during tag changes](day03/example_depends_on/Tag_changes.png)
+
+<br>Terraform plan output for instance change
+<br>Terraform plan output after instance type change, it is also in-place update change where Terraform calls ModifyInstanceAttribute and existing resource will be temporarily stopped and new instance type will be assigned. Instance ID, private IP, and EBS volumes remain exactly the same
+
+```diff
+ranjeetbhosale@Ranjeets-MacBook-Air example_depends_on % terraform plan 
+data.aws_availability_zones.available: Reading...
+data.aws_ami.al2023: Reading...
+aws_security_group.web: Refreshing state... [id=sg-012db8010c4b40411]
+data.aws_availability_zones.available: Read complete after 1s [id=us-east-1]
+data.aws_ami.al2023: Read complete after 1s [id=ami-0fd6240f599091088]
+aws_instance.web: Refreshing state... [id=i-04876adad823e0070]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the
+following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # aws_instance.web will be updated in-place
+  ~ resource "aws_instance" "web" {
+        id                                   = "i-04876adad823e0070"
+      ~ instance_type                        = "t3.micro" -> "t2.micro"
+      ~ public_dns                           = "ec2-32-196-143-93.compute-1.amazonaws.com" -> (known after apply)
+      ~ public_ip                            = "32.196.143.93" -> (known after apply)
+        tags                                 = {
+            "Name" = "terraweek-tag-changes"
+        }
+        # (38 unchanged attributes hidden)
+
+        # (9 unchanged blocks hidden)
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
+Changes to Outputs:
+  ~ public_ips   = "32.196.143.93" -> (known after apply)
+  ~ web_urls     = "http://32.196.143.93" -> (known after apply)
+
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Note: You didn't use the -out option to save this plan, so Terraform can't guarantee to take exactly these actions if you
+run "terraform apply" now.
+ranjeetbhosale@Ranjeets-MacBook-Air example_depends_on %
+```
+
+
+**replace** vs **in-place update**.
+<br>replace - here existing resource will be deleted and new resource will be creating e.g. AMI ID of the instance is changed, new instance will be created.
+<br>sample plan output when AMI is changed is as:
+
+```diff
+ranjeetbhosale@Ranjeets-MacBook-Air example_depends_on % terraform plan 
+data.aws_availability_zones.available: Reading...
+data.aws_ami.ubuntu: Reading...
+aws_security_group.web: Refreshing state... [id=sg-012db8010c4b40411]
+data.aws_availability_zones.available: Read complete after 1s [id=us-east-1]
+data.aws_ami.ubuntu: Read complete after 2s [id=ami-052355af2a014bd2c]
+aws_instance.web: Refreshing state... [id=i-04876adad823e0070]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the
+following symbols:
++/- create replacement and then destroy
+
+Terraform will perform the following actions:
+
+  # aws_instance.web must be replaced
++/- resource "aws_instance" "web" {
+      ~ ami                                  = "ami-0fd6240f599091088" -> "ami-052355af2a014bd2c" # forces replacement
+      ~ arn                                  = "arn:aws:ec2:us-east-1:899805259876:instance/i-04876adad823e0070" -> (known after apply)
+      ~ disable_api_stop                     = false -> (known after apply)
+      ~ disable_api_termination              = false -> (known after apply)
+      ~ ebs_optimized                        = false -> (known after apply)
+      + enable_primary_ipv6                  = (known after apply)
+      - hibernation                          = false -> null
+      + host_id                              = (known after apply)
+      + host_resource_group_arn              = (known after apply)
+      + iam_instance_profile                 = (known after apply)
+      ~ id                                   = "i-04876adad823e0070" -> (known after apply)
+      ~ instance_initiated_shutdown_behavior = "stop" -> (known after apply)
+      + instance_lifecycle                   = (known after apply)
+      ~ instance_state                       = "running" -> (known after apply)
+      ~ ipv6_address_count                   = 0 -> (known after apply)
+      ~ ipv6_addresses                       = [] -> (known after apply)
+      + key_name                             = (known after apply)
+      ~ monitoring                           = false -> (known after apply)
+      + outpost_arn                          = (known after apply)
+      + password_data                        = (known after apply)
+      + placement_group                      = (known after apply)
+      + placement_group_id                   = (known after apply)
+      ~ placement_partition_number           = 0 -> (known after apply)
+      ~ primary_network_interface_id         = "eni-0742983891cbd86bc" -> (known after apply)
+      ~ private_dns                          = "ip-172-31-5-146.ec2.internal" -> (known after apply)
+      ~ private_ip                           = "172.31.5.146" -> (known after apply)
+      ~ public_dns                           = "ec2-32-196-143-93.compute-1.amazonaws.com" -> (known after apply)
+      ~ public_ip                            = "32.196.143.93" -> (known after apply)
+      ~ secondary_private_ips                = [] -> (known after apply)
+      ~ security_groups                      = [
+          - "terraweek-web-sg",
+        ] -> (known after apply)
+      + spot_instance_request_id             = (known after apply)
+      ~ subnet_id                            = "subnet-0b74503713cdcbc36" -> (known after apply)
+        tags                                 = {
+            "Name" = "terraweek-tag-changes"
+        }
+      ~ tenancy                              = "default" -> (known after apply)
+      + user_data_base64                     = (known after apply)
+        # (11 unchanged attributes hidden)
+
+      ~ capacity_reservation_specification (known after apply)
+      - capacity_reservation_specification {
+          - capacity_reservation_preference = "open" -> null
+        }
+
+      ~ cpu_options (known after apply)
+      - cpu_options {
+          - core_count            = 1 -> null
+          - threads_per_core      = 2 -> null
+            # (2 unchanged attributes hidden)
+        }
+
+      - credit_specification {
+          - cpu_credits = "unlimited" -> null
+        }
+
+      ~ ebs_block_device (known after apply)
+
+      ~ enclave_options (known after apply)
+      - enclave_options {
+          - enabled = false -> null
+        }
+
+      ~ ephemeral_block_device (known after apply)
+
+      ~ instance_market_options (known after apply)
+
+      ~ maintenance_options (known after apply)
+      - maintenance_options {
+          - auto_recovery = "default" -> null
+        }
+
+      ~ metadata_options (known after apply)
+      - metadata_options {
+          - http_endpoint               = "enabled" -> null
+          - http_protocol_ipv6          = "disabled" -> null
+          - http_put_response_hop_limit = 2 -> null
+          - http_tokens                 = "required" -> null
+          - instance_metadata_tags      = "disabled" -> null
+        }
+
+      ~ network_interface (known after apply)
+
+      ~ primary_network_interface (known after apply)
+      - primary_network_interface {
+          - delete_on_termination = true -> null
+          - network_interface_id  = "eni-0742983891cbd86bc" -> null
+        }
+
+      ~ private_dns_name_options (known after apply)
+      - private_dns_name_options {
+          - enable_resource_name_dns_a_record    = false -> null
+          - enable_resource_name_dns_aaaa_record = false -> null
+          - hostname_type                        = "ip-name" -> null
+        }
+
+      ~ root_block_device (known after apply)
+      - root_block_device {
+          - delete_on_termination = true -> null
+          - device_name           = "/dev/xvda" -> null
+          - encrypted             = false -> null
+          - iops                  = 3000 -> null
+          - tags                  = {
+              - "Day"       = "03"
+              - "ManagedBy" = "terraform"
+              - "Project"   = "terraweek-2026"
+            } -> null
+          - tags_all              = {
+              - "Day"       = "03"
+              - "ManagedBy" = "terraform"
+              - "Project"   = "terraweek-2026"
+            } -> null
+          - throughput            = 125 -> null
+          - volume_id             = "vol-0ba9c5c8b0631f284" -> null
+          - volume_size           = 8 -> null
+          - volume_type           = "gp3" -> null
+            # (1 unchanged attribute hidden)
+        }
+
+      ~ secondary_network_interface (known after apply)
+    }
+
+Plan: 1 to add, 0 to change, 1 to destroy.
+
+Changes to Outputs:
+  ~ ami_id       = "ami-0fd6240f599091088" -> "ami-052355af2a014bd2c"
+  ~ instance_ids = "i-04876adad823e0070" -> (known after apply)
+  ~ public_ips   = "32.196.143.93" -> (known after apply)
+  ~ web_urls     = "http://32.196.143.93" -> (known after apply)
+
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Note: You didn't use the -out option to save this plan, so Terraform can't guarantee to take exactly these actions if you
+run "terraform apply" now.
+```
+
+<br>Terraform apply output for instance destroy and new created is as:
+
+```diff
+ranjeetbhosale@Ranjeets-MacBook-Air example_depends_on % terraform apply
+data.aws_availability_zones.available: Reading...
+data.aws_ami.ubuntu: Reading...
+aws_security_group.web: Refreshing state... [id=sg-012db8010c4b40411]
+data.aws_availability_zones.available: Read complete after 1s [id=us-east-1]
+data.aws_ami.ubuntu: Read complete after 1s [id=ami-052355af2a014bd2c]
+aws_instance.web: Refreshing state... [id=i-04876adad823e0070]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the
+following symbols:
++/- create replacement and then destroy
+
+Terraform will perform the following actions:
+
+  # aws_instance.web must be replaced
++/- resource "aws_instance" "web" {
+      ~ ami                                  = "ami-0fd6240f599091088" -> "ami-052355af2a014bd2c" # forces replacement
+      ~ arn                                  = "arn:aws:ec2:us-east-1:899805259876:instance/i-04876adad823e0070" -> (known after apply)
+      ~ disable_api_stop                     = false -> (known after apply)
+      ~ disable_api_termination              = false -> (known after apply)
+      ~ ebs_optimized                        = false -> (known after apply)
+      + enable_primary_ipv6                  = (known after apply)
+      - hibernation                          = false -> null
+      + host_id                              = (known after apply)
+      + host_resource_group_arn              = (known after apply)
+      + iam_instance_profile                 = (known after apply)
+      ~ id                                   = "i-04876adad823e0070" -> (known after apply)
+      ~ instance_initiated_shutdown_behavior = "stop" -> (known after apply)
+      + instance_lifecycle                   = (known after apply)
+      ~ instance_state                       = "running" -> (known after apply)
+      ~ ipv6_address_count                   = 0 -> (known after apply)
+      ~ ipv6_addresses                       = [] -> (known after apply)
+      + key_name                             = (known after apply)
+      ~ monitoring                           = false -> (known after apply)
+      + outpost_arn                          = (known after apply)
+      + password_data                        = (known after apply)
+      + placement_group                      = (known after apply)
+      + placement_group_id                   = (known after apply)
+      ~ placement_partition_number           = 0 -> (known after apply)
+      ~ primary_network_interface_id         = "eni-0742983891cbd86bc" -> (known after apply)
+      ~ private_dns                          = "ip-172-31-5-146.ec2.internal" -> (known after apply)
+      ~ private_ip                           = "172.31.5.146" -> (known after apply)
+      ~ public_dns                           = "ec2-32-196-143-93.compute-1.amazonaws.com" -> (known after apply)
+      ~ public_ip                            = "32.196.143.93" -> (known after apply)
+      ~ secondary_private_ips                = [] -> (known after apply)
+      ~ security_groups                      = [
+          - "terraweek-web-sg",
+        ] -> (known after apply)
+      + spot_instance_request_id             = (known after apply)
+      ~ subnet_id                            = "subnet-0b74503713cdcbc36" -> (known after apply)
+        tags                                 = {
+            "Name" = "terraweek-tag-changes"
+        }
+      ~ tenancy                              = "default" -> (known after apply)
+      + user_data_base64                     = (known after apply)
+        # (11 unchanged attributes hidden)
+
+      ~ capacity_reservation_specification (known after apply)
+      - capacity_reservation_specification {
+          - capacity_reservation_preference = "open" -> null
+        }
+
+      ~ cpu_options (known after apply)
+      - cpu_options {
+          - core_count            = 1 -> null
+          - threads_per_core      = 2 -> null
+            # (2 unchanged attributes hidden)
+        }
+
+      - credit_specification {
+          - cpu_credits = "unlimited" -> null
+        }
+
+      ~ ebs_block_device (known after apply)
+
+      ~ enclave_options (known after apply)
+      - enclave_options {
+          - enabled = false -> null
+        }
+
+      ~ ephemeral_block_device (known after apply)
+
+      ~ instance_market_options (known after apply)
+
+      ~ maintenance_options (known after apply)
+      - maintenance_options {
+          - auto_recovery = "default" -> null
+        }
+
+      ~ metadata_options (known after apply)
+      - metadata_options {
+          - http_endpoint               = "enabled" -> null
+          - http_protocol_ipv6          = "disabled" -> null
+          - http_put_response_hop_limit = 2 -> null
+          - http_tokens                 = "required" -> null
+          - instance_metadata_tags      = "disabled" -> null
+        }
+
+      ~ network_interface (known after apply)
+
+      ~ primary_network_interface (known after apply)
+      - primary_network_interface {
+          - delete_on_termination = true -> null
+          - network_interface_id  = "eni-0742983891cbd86bc" -> null
+        }
+
+      ~ private_dns_name_options (known after apply)
+      - private_dns_name_options {
+          - enable_resource_name_dns_a_record    = false -> null
+          - enable_resource_name_dns_aaaa_record = false -> null
+          - hostname_type                        = "ip-name" -> null
+        }
+
+      ~ root_block_device (known after apply)
+      - root_block_device {
+          - delete_on_termination = true -> null
+          - device_name           = "/dev/xvda" -> null
+          - encrypted             = false -> null
+          - iops                  = 3000 -> null
+          - tags                  = {
+              - "Day"       = "03"
+              - "ManagedBy" = "terraform"
+              - "Project"   = "terraweek-2026"
+            } -> null
+          - tags_all              = {
+              - "Day"       = "03"
+              - "ManagedBy" = "terraform"
+              - "Project"   = "terraweek-2026"
+            } -> null
+          - throughput            = 125 -> null
+          - volume_id             = "vol-0ba9c5c8b0631f284" -> null
+          - volume_size           = 8 -> null
+          - volume_type           = "gp3" -> null
+            # (1 unchanged attribute hidden)
+        }
+
+      ~ secondary_network_interface (known after apply)
+    }
+
+Plan: 1 to add, 0 to change, 1 to destroy.
+
+Changes to Outputs:
+  ~ ami_id       = "ami-0fd6240f599091088" -> "ami-052355af2a014bd2c"
+  ~ instance_ids = "i-04876adad823e0070" -> (known after apply)
+  ~ public_ips   = "32.196.143.93" -> (known after apply)
+  ~ web_urls     = "http://32.196.143.93" -> (known after apply)
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+aws_instance.web: Creating...
+aws_instance.web: Still creating... [00m10s elapsed]
+aws_instance.web: Creation complete after 16s [id=i-07bd15a57355b775d]
+aws_instance.web (deposed object b4b61ecf): Destroying... [id=i-04876adad823e0070]
+aws_instance.web: Still destroying... [id=i-04876adad823e0070, 00m10s elapsed]
+aws_instance.web: Still destroying... [id=i-04876adad823e0070, 00m20s elapsed]
+aws_instance.web: Still destroying... [id=i-04876adad823e0070, 00m30s elapsed]
+aws_instance.web: Still destroying... [id=i-04876adad823e0070, 00m40s elapsed]
+aws_instance.web: Destruction complete after 42s
+
+Apply complete! Resources: 1 added, 0 changed, 1 destroyed.
+
+Outputs:
+
+ami_id = "ami-052355af2a014bd2c"
+instance_ids = "i-07bd15a57355b775d"
+public_ips = "100.56.240.189"
+web_urls = "http://100.56.240.189"
+```
+
 - **Always** finish with:
 ```bash
 terraform destroy   # type: yes  — avoid surprise bills!
+```
+```diff
+ranjeetbhosale@Ranjeets-MacBook-Air example_depends_on % terraform destroy
+data.aws_availability_zones.available: Reading...
+data.aws_ami.ubuntu: Reading...
+aws_security_group.web: Refreshing state... [id=sg-012db8010c4b40411]
+data.aws_availability_zones.available: Read complete after 1s [id=us-east-1]
+data.aws_ami.ubuntu: Read complete after 2s [id=ami-052355af2a014bd2c]
+aws_instance.web: Refreshing state... [id=i-07bd15a57355b775d]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the
+following symbols:
+  - destroy
+
+Terraform will perform the following actions:
+
+  # aws_instance.web will be destroyed
+  - resource "aws_instance" "web" {
+      - ami                                  = "ami-052355af2a014bd2c" -> null
+      - arn                                  = "arn:aws:ec2:us-east-1:899805259876:instance/i-07bd15a57355b775d" -> null
+      - associate_public_ip_address          = true -> null
+      - availability_zone                    = "us-east-1a" -> null
+      - disable_api_stop                     = false -> null
+      - disable_api_termination              = false -> null
+      - ebs_optimized                        = false -> null
+      - force_destroy                        = false -> null
+      - get_password_data                    = false -> null
+      - hibernation                          = false -> null
+      - id                                   = "i-07bd15a57355b775d" -> null
+      - instance_initiated_shutdown_behavior = "stop" -> null
+      - instance_state                       = "running" -> null
+      - instance_type                        = "t3.micro" -> null
+      - ipv6_address_count                   = 0 -> null
+      - ipv6_addresses                       = [] -> null
+      - monitoring                           = false -> null
+      - placement_partition_number           = 0 -> null
+      - primary_network_interface_id         = "eni-04e195813fd2a5e56" -> null
+      - private_dns                          = "ip-172-31-13-170.ec2.internal" -> null
+      - private_ip                           = "172.31.13.170" -> null
+      - public_dns                           = "ec2-100-56-240-189.compute-1.amazonaws.com" -> null
+      - public_ip                            = "100.56.240.189" -> null
+      - region                               = "us-east-1" -> null
+      - secondary_private_ips                = [] -> null
+      - security_groups                      = [
+          - "terraweek-web-sg",
+        ] -> null
+      - source_dest_check                    = true -> null
+      - subnet_id                            = "subnet-0b74503713cdcbc36" -> null
+      - tags                                 = {
+          - "Name" = "terraweek-tag-changes"
+        } -> null
+      - tags_all                             = {
+          - "Day"       = "03"
+          - "ManagedBy" = "terraform"
+          - "Name"      = "terraweek-tag-changes"
+          - "Project"   = "terraweek-2026"
+        } -> null
+      - tenancy                              = "default" -> null
+      - user_data                            = <<-EOT
+            #!/bin/bash
+            dnf install -y nginx
+            echo "<h1>Hello from TerraWeek 2026 🚀</h1>" > /usr/share/nginx/html/index.html
+            systemctl enable --now nginx
+        EOT -> null
+      - user_data_replace_on_change          = false -> null
+      - vpc_security_group_ids               = [
+          - "sg-012db8010c4b40411",
+        ] -> null
+        # (9 unchanged attributes hidden)
+
+      - capacity_reservation_specification {
+          - capacity_reservation_preference = "open" -> null
+        }
+
+      - cpu_options {
+          - core_count            = 1 -> null
+          - threads_per_core      = 2 -> null
+            # (2 unchanged attributes hidden)
+        }
+
+      - credit_specification {
+          - cpu_credits = "unlimited" -> null
+        }
+
+      - enclave_options {
+          - enabled = false -> null
+        }
+
+      - maintenance_options {
+          - auto_recovery = "default" -> null
+        }
+
+      - metadata_options {
+          - http_endpoint               = "enabled" -> null
+          - http_protocol_ipv6          = "disabled" -> null
+          - http_put_response_hop_limit = 2 -> null
+          - http_tokens                 = "required" -> null
+          - instance_metadata_tags      = "disabled" -> null
+        }
+
+      - primary_network_interface {
+          - delete_on_termination = true -> null
+          - network_interface_id  = "eni-04e195813fd2a5e56" -> null
+        }
+
+      - private_dns_name_options {
+          - enable_resource_name_dns_a_record    = false -> null
+          - enable_resource_name_dns_aaaa_record = false -> null
+          - hostname_type                        = "ip-name" -> null
+        }
+
+      - root_block_device {
+          - delete_on_termination = true -> null
+          - device_name           = "/dev/sda1" -> null
+          - encrypted             = false -> null
+          - iops                  = 3000 -> null
+          - tags                  = {
+              - "Day"       = "03"
+              - "ManagedBy" = "terraform"
+              - "Project"   = "terraweek-2026"
+            } -> null
+          - tags_all              = {
+              - "Day"       = "03"
+              - "ManagedBy" = "terraform"
+              - "Project"   = "terraweek-2026"
+            } -> null
+          - throughput            = 125 -> null
+          - volume_id             = "vol-02b69d65485bab895" -> null
+          - volume_size           = 8 -> null
+          - volume_type           = "gp3" -> null
+            # (1 unchanged attribute hidden)
+        }
+    }
+
+  # aws_security_group.web will be destroyed
+  - resource "aws_security_group" "web" {
+      - arn                    = "arn:aws:ec2:us-east-1:899805259876:security-group/sg-012db8010c4b40411" -> null
+      - description            = "Allow HTTP inbound and all outbound" -> null
+      - egress                 = [
+          - {
+              - cidr_blocks      = [
+                  - "0.0.0.0/0",
+                ]
+              - description      = "All outbound"
+              - from_port        = 0
+              - ipv6_cidr_blocks = []
+              - prefix_list_ids  = []
+              - protocol         = "-1"
+              - security_groups  = []
+              - self             = false
+              - to_port          = 0
+            },
+        ] -> null
+      - id                     = "sg-012db8010c4b40411" -> null
+      - ingress                = [
+          - {
+              - cidr_blocks      = [
+                  - "0.0.0.0/0",
+                ]
+              - description      = "HTTP from anywhere"
+              - from_port        = 80
+              - ipv6_cidr_blocks = []
+              - prefix_list_ids  = []
+              - protocol         = "tcp"
+              - security_groups  = []
+              - self             = false
+              - to_port          = 80
+            },
+        ] -> null
+      - name                   = "terraweek-web-sg" -> null
+      - owner_id               = "899805259876" -> null
+      - region                 = "us-east-1" -> null
+      - revoke_rules_on_delete = false -> null
+      - tags                   = {
+          - "Name" = "terraweek-web-sg"
+        } -> null
+      - tags_all               = {
+          - "Day"       = "03"
+          - "ManagedBy" = "terraform"
+          - "Name"      = "terraweek-web-sg"
+          - "Project"   = "terraweek-2026"
+        } -> null
+      - vpc_id                 = "vpc-0d1fb95f18fff1655" -> null
+        # (1 unchanged attribute hidden)
+    }
+
+Plan: 0 to add, 0 to change, 2 to destroy.
+
+Changes to Outputs:
+  - ami_id       = "ami-052355af2a014bd2c" -> null
+  - instance_ids = "i-07bd15a57355b775d" -> null
+  - public_ips   = "100.56.240.189" -> null
+  - web_urls     = "http://100.56.240.189" -> null
+
+Do you really want to destroy all resources?
+  Terraform will destroy all your managed infrastructure, as shown above.
+  There is no undo. Only 'yes' will be accepted to confirm.
+
+  Enter a value: yes
+
+aws_instance.web: Destroying... [id=i-07bd15a57355b775d]
+aws_instance.web: Still destroying... [id=i-07bd15a57355b775d, 00m10s elapsed]
+aws_instance.web: Still destroying... [id=i-07bd15a57355b775d, 00m20s elapsed]
+aws_instance.web: Still destroying... [id=i-07bd15a57355b775d, 00m30s elapsed]
+aws_instance.web: Still destroying... [id=i-07bd15a57355b775d, 00m40s elapsed]
+aws_instance.web: Still destroying... [id=i-07bd15a57355b775d, 00m50s elapsed]
+aws_instance.web: Destruction complete after 52s
+aws_security_group.web: Destroying... [id=sg-012db8010c4b40411]
+aws_security_group.web: Destruction complete after 2s
+
+Destroy complete! Resources: 2 destroyed.
 ```
 
 ---
