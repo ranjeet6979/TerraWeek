@@ -477,7 +477,7 @@ index c25bf60..ddd5b32 100644
 <br>Code for depends_on added in day03/example_depends_on, demonstrated EC2 instance depends on AWS SG.
 <br>Dependency graph is as:
 
-![Terraform Dependency Graph showing EC2 depending on Security Group](./example_depends_on/graph.png)
+![Terraform Dependency Graph showing EC2 depending on Security Group](/day03/example_depends_on/graph.png)
 
 - **`lifecycle`** — try `create_before_destroy`, `prevent_destroy`, and `ignore_changes`
 
