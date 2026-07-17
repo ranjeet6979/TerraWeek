@@ -472,7 +472,12 @@ index c25bf60..ddd5b32 100644
 ```
 
 - **`for_each`** — create resources from a `map`/`set` (preferred over `count` for named things).
+<br>Added in day03/example_for
 - **`depends_on`** — force an explicit ordering.
+<br>Code for depends_on added in day03/example_depends_on, demonstrated EC2 instance depends on AWS SG.
+<br>Dependency graph is as:
+<br>![Depends on graph(../example_depends_on/graph.png)
+
 - **`lifecycle`** — try `create_before_destroy`, `prevent_destroy`, and `ignore_changes`
 
 ```hcl
