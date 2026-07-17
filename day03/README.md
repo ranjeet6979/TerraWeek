@@ -480,6 +480,22 @@ index c25bf60..ddd5b32 100644
 ![Terraform Dependency Graph showing EC2 depending on Security Group](/day03/example_depends_on/graph.png)
 
 - **`lifecycle`** — try `create_before_destroy`, `prevent_destroy`, and `ignore_changes`
+**create_before_destroy**
+<br>terraform apply output for create_before_destroy is as:
+<br>Here first example.txt with content "Hello, World! with changes in lifecycle" was created
+<br>later its content was changed to "Hello, World! with changes in lifecycle2"
+
+![Terraform DApply Output for LifeCycle](/day03/example_lifecycle/create_before_destroy_terrraform_apply.png)
+
+**prevent_destroy**
+<br>Terraform apply output for prevent destroy
+![Terraform apply output for prevent destroy](/day03/example_lifecycle/prevent_destroy_terraform_apply.png)
+
+<br>File not be deleted even if marked for destroy in terraform apply
+![Terraform apply](prevent_destroy_terraform_apply_marked_for_destroypng.png)
+
+<br>File not be deleted during terraform destroy
+![Terraform destroy will give an error](/day03/example_lifecycle/prevent_destroy_terraform_destroy.png)
 
 ```hcl
 lifecycle {
